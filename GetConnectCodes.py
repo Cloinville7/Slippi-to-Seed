@@ -1,5 +1,7 @@
 from graphqlclient import GraphQLClient
 import json
+import requests
+
 ## Make sure to run `pip install graphqlclient`
 authToken = 'YOUR START GG AUTH CODE HERE'
 apiVersion = 'alpha'
@@ -40,7 +42,7 @@ query TournamentQuery($slug: String,$page: Int!, $perPage: Int!) {
 {
 "slug": tournamentName,
 "page": 1,
-"perPage": 5000
+"perPage": 500
 })
 resultData = json.loads(getSeedsResult)
 if 'errors' in resultData:
@@ -55,7 +57,44 @@ else:
                 name = str(currentPlayer['participants'][0]['gamerTag'])
                 code = str(currentPlayer['participants'][0]['connectedAccounts']['slippi']['value'])
                 players.update({name:code})
-        print(players)
-        print(len(players))
-        print("\n")
-#print(len(players))
+
+for key in players:
+
+    client = GraphQLClient('https://gql-gateway-dot-slippi.uc.r.appspot.com/graphql')
+
+    getPlayerRank = client.execute('''query AccountManagementPageQuery($cc: String!) {
+        getConnectCode(code: $cc) {
+            user {
+                rankedNetplayProfile {
+                    ratingOrdinal
+                }
+            }
+        }
+    }''',
+    {
+    "cc": players[key]
+    })
+
+    resultData = json.loads(getPlayerRank)
+    if(resultData['data']['getConnectCode']):
+        elo = (resultData['data']['getConnectCode']['user']['rankedNetplayProfile']['ratingOrdinal'])
+        players.update({key:(players[key],elo)})
+    else:
+        players.update({key:(players[key],"No Elo")})
+
+for key in players:
+    print(key + " " + players[key][0] + "," + str(players[key][1]))
+    # players.update({key:(players[key],0)})
+
+
+
+
+#TODOs - account for 500+ event size
+#Get Slippi API to work
+
+#https://gql-gateway-dot-slippi.uc.r.appspot.com/graphql
+
+
+#Add all data to structure 
+#Sort by ranking
+#Import data to CSV for TO to import into start.gg/look at coding example on their site
